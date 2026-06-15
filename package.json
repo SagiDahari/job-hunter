@@ -1,0 +1,27 @@
+{
+  "name": "jobhunter-ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI-powered job matching platform — monorepo root",
+  "license": "MIT",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.1.0"
+  }
+}

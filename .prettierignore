@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+packages/shared-types/generated/
+**/*.generated.ts
+pnpm-lock.yaml
+package-lock.json
