@@ -30,8 +30,8 @@ authenticated (empty) dashboard — all running locally via `docker-compose up` 
 
 | PR | Title | Depends on | Status | Owner | Reviewer |
 |----|-------|------------|--------|-------|----------|
-| PR-001 | Monorepo scaffolding & tooling | — | ⬜ | | |
-| PR-002 | Local dev environment (Docker Compose) | PR-001 | ⬜ | | |
+| PR-001 | Monorepo scaffolding & tooling | — | ✅ | sagi | sagi |
+| PR-002 | Local dev environment (Docker Compose) | PR-001 | 🟦 | sagi | |
 | PR-003 | CI pipeline (lint, type-check, test) | PR-001 | ⬜ | | |
 | PR-004 | FastAPI app skeleton + settings/config | PR-001, PR-002 | ⬜ | | |
 | PR-005 | Database: Postgres + pgvector + Alembic + base | PR-004 | ⬜ | | |
@@ -56,19 +56,20 @@ Python tooling (`ruff`, `mypy`, `pytest` config via `pyproject.toml`), JS toolin
 the git `pre-commit` hook.
 
 **Acceptance criteria.**
-- [ ] Directory structure matches ADR-001.
-- [ ] `ruff`, `mypy`, `eslint`, `prettier` run from the repo root.
-- [ ] `scripts/preflight.sh` runs all quality gates and is installed as the `pre-commit` hook
+- [x] Directory structure matches ADR-001.
+- [x] `ruff`, `mypy`, `eslint`, `prettier` run from the repo root. *(configs in place + `make`
+      targets; run after `make setup` installs deps)*
+- [x] `scripts/preflight.sh` runs all quality gates and is installed as the `pre-commit` hook
       (or via the `pre-commit` framework) and documented in README.
-- [ ] Root README explains layout and how to get started.
+- [x] Root README explains layout and how to get started.
 
 > **Quality gate:** `scripts/preflight.sh` runs the linter, formatter check, type checker,
 > and tests for every app present, and must pass before any PR in this batch is committed.
 > Use `scripts/preflight.sh --fix` to autofix formatting first. See the script's `--help`.
 
 **Review checklist.**
-- [ ] No app code yet — scaffolding only.
-- [ ] Tool configs are shared/consistent across apps.
+- [x] No app code yet — scaffolding only.
+- [x] Tool configs are shared/consistent across apps.
 
 ---
 
