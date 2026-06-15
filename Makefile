@@ -3,7 +3,11 @@
 # git pre-commit hook stay identical.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup check fix lint fmt test api-check web-check hooks
+.PHONY: help setup check fix lint fmt test api-check web-check hooks \
+	up down restart logs ps
+
+# Local dev stack (Postgres + Redis). Reads variables from the repo-root .env.
+COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -40,3 +44,20 @@ hooks: ## (Re)install the pre-commit hook into .git/hooks
 		|| cp scripts/preflight.sh .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "pre-commit hook installed."
+
+up: ## Start the local dev stack (Postgres + Redis) in the background
+	@test -f .env || (echo "No .env found — run: cp .env.example .env" && exit 1)
+	@$(COMPOSE) up -d
+	@echo "Stack up. Check health with 'make ps'."
+
+down: ## Stop the local dev stack (keeps data volumes)
+	@$(COMPOSE) down
+
+restart: ## Restart the local dev stack
+	@$(COMPOSE) down && $(COMPOSE) up -d
+
+logs: ## Tail logs from the local dev stack
+	@$(COMPOSE) logs -f
+
+ps: ## Show status/health of the local dev stack
+	@$(COMPOSE) ps

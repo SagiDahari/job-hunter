@@ -1,0 +1,64 @@
+# Local development stack for JobHunter AI.
+#
+# Brings up the stateful backing services the API and workers depend on:
+#   - postgres : PostgreSQL 16 with the pgvector extension (ADR-006)
+#   - redis    : Celery broker + cache (ADR-007)
+#
+# The `api` and worker services are added once the app exists (api in PR-004,
+# workers later). Run from the repo root via the Makefile:  `make up` / `make down`.
+#
+# Variables are read from the repo-root .env file (copy from .env.example).
+
+name: jobhunter
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: jobhunter-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: jobhunter-redis
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  # --- enabled in later PRs -------------------------------------------------
+  # api:
+  #   build:
+  #     context: ../../apps/api
+  #     dockerfile: ../../infra/docker/api.Dockerfile
+  #   env_file: ../../.env
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+  #     redis:    { condition: service_healthy }
+  #   ports: ["${API_PORT:-8000}:8000"]
+  #   (added in PR-004)
+
+volumes:
+  pgdata:
+  redisdata:

@@ -43,8 +43,8 @@ for the backend layering.
 
 ## Getting started
 
-Prerequisites: Python 3.12, Node 20+, and (recommended) [`uv`](https://docs.astral.sh/uv/)
-for Python deps. Docker for the local stack (added in PR-002).
+Prerequisites: Python 3.12, Node 20+, Docker (with Compose), and (recommended)
+[`uv`](https://docs.astral.sh/uv/) for Python deps.
 
 ```bash
 # install dev tooling for whichever apps exist
@@ -59,6 +59,26 @@ make fix
 
 A `pre-commit` git hook runs `scripts/preflight.sh` automatically on every commit.
 Bypass in an emergency with `git commit --no-verify`.
+
+## Run locally
+
+The local stack runs PostgreSQL (with pgvector) and Redis via Docker Compose.
+
+```bash
+cp .env.example .env     # local dev defaults — safe to use as-is
+make up                  # start Postgres + Redis in the background
+make ps                  # check container health
+make logs                # tail logs
+make down                # stop (data is kept in named volumes)
+```
+
+| Service | Host port (default) | Purpose |
+|---|---|---|
+| PostgreSQL + pgvector | `5432` | primary datastore |
+| Redis | `6379` | Celery broker + cache |
+
+Connection strings for the app live in `.env` (`DATABASE_URL`, `REDIS_URL`). The API and
+worker services join this stack in later PRs (api in PR-004).
 
 ## Development workflow
 
