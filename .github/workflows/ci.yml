@@ -1,0 +1,157 @@
+name: CI
+
+# Path-aware CI per ADR-001: a change that only touches the backend doesn't run
+# the frontend job, and vice-versa. Shared/root config and this workflow itself
+# trigger both so infra changes stay honest.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref (e.g. a new push to a PR branch).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Detect which app(s) changed so downstream jobs can run conditionally.
+  # --------------------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/api/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'apps/web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'eslint.config.mjs'
+              - '.prettierrc.json'
+              - '.prettierignore'
+              - 'tsconfig.base.json'
+              - '.github/workflows/ci.yml'
+
+  # --------------------------------------------------------------------------
+  # Backend (apps/api): ruff · mypy · pytest against a real Postgres+Redis.
+  # --------------------------------------------------------------------------
+  backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: jobhunter
+          POSTGRES_PASSWORD: jobhunter_dev_pw
+          POSTGRES_DB: jobhunter_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobhunter -d jobhunter_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Consumed by DB/Redis-backed tests once they land (PR-005+). Host is
+      # localhost because service-container ports are published to the runner.
+      DATABASE_URL: postgresql+psycopg://jobhunter:jobhunter_dev_pw@localhost:5432/jobhunter_test
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Ruff format check
+        run: uv run ruff format --check .
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Mypy
+        run: uv run mypy .
+      - name: Pytest
+        run: uv run pytest -q
+
+  # --------------------------------------------------------------------------
+  # Frontend (apps/web): prettier · eslint, plus tsc + build once the web app
+  # exists (PR-009). Until then the web-only steps are skipped, not faked.
+  # --------------------------------------------------------------------------
+  frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Detect web app
+        id: web
+        run: |
+          if [ -f apps/web/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::apps/web has no package.json yet — skipping tsc/build (lands in PR-009)."
+          fi
+      - name: Prettier check
+        run: npm run format:check
+      - name: ESLint
+        run: npm run lint
+      - name: Type-check (web)
+        if: steps.web.outputs.present == 'true'
+        run: npm run typecheck --workspace apps/web
+      - name: Build (web)
+        if: steps.web.outputs.present == 'true'
+        run: npm run build --workspace apps/web
+
+  # --------------------------------------------------------------------------
+  # Single required status check: green only if no needed job failed. Lets
+  # branch protection require one context regardless of which paths changed.
+  # --------------------------------------------------------------------------
+  ci:
+    needs: [backend, frontend]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify no job failed
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] \
+            || [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "A required job failed or was cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped)."

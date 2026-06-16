@@ -1,5 +1,7 @@
 # JobHunter AI
 
+[![CI](https://github.com/SagiDahari/job-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/SagiDahari/job-hunter/actions/workflows/ci.yml)
+
 AI-powered job matching for junior and mid-level software engineers. Users upload a CV and
 set preferences; the platform ingests job postings from multiple sources, scores them against
 the user with a hybrid vector + LLM pipeline, surfaces missing skills, and emails a daily
@@ -9,14 +11,14 @@ digest of high-match opportunities.
 
 ## Tech stack
 
-| Layer | Choice |
-|---|---|
-| Frontend | Next.js · TypeScript · Tailwind · shadcn/ui |
-| Backend | FastAPI · Python 3.12 |
-| Data | PostgreSQL · pgvector |
-| Jobs | Redis · Celery |
-| AI | Claude (reasoning) · Voyage (embeddings) — see [ADR-004](docs/architecture/decisions.md#adr-004-ai-providers--claude-for-reasoning-voyage-for-embeddings) |
-| Infra | Docker · AWS (ECS Fargate, Terraform) |
+| Layer    | Choice                                                                                                                                                    |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend | Next.js · TypeScript · Tailwind · shadcn/ui                                                                                                               |
+| Backend  | FastAPI · Python 3.12                                                                                                                                     |
+| Data     | PostgreSQL · pgvector                                                                                                                                     |
+| Jobs     | Redis · Celery                                                                                                                                            |
+| AI       | Claude (reasoning) · Voyage (embeddings) — see [ADR-004](docs/architecture/decisions.md#adr-004-ai-providers--claude-for-reasoning-voyage-for-embeddings) |
+| Infra    | Docker · AWS (ECS Fargate, Terraform)                                                                                                                     |
 
 ## Repository layout
 
@@ -72,10 +74,10 @@ make logs                # tail logs
 make down                # stop (data is kept in named volumes)
 ```
 
-| Service | Host port (default) | Purpose |
-|---|---|---|
-| PostgreSQL + pgvector | `5432` | primary datastore |
-| Redis | `6379` | Celery broker + cache |
+| Service               | Host port (default) | Purpose               |
+| --------------------- | ------------------- | --------------------- |
+| PostgreSQL + pgvector | `5432`              | primary datastore     |
+| Redis                 | `6379`              | Celery broker + cache |
 
 Connection strings for the app live in `.env` (`DATABASE_URL`, `REDIS_URL`). The API and
 worker services join this stack in later PRs (api in PR-004).
@@ -88,6 +90,21 @@ We deliver work as small, reviewed PRs tracked in `docs/pull-requests/`. Each PR
 - uses Conventional Commit titles (`feat:`, `fix:`, `chore:`, …),
 - must pass `scripts/preflight.sh` before commit,
 - updates its row in the batch tracking table.
+
+### Continuous integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on every PR.
+It is **path-aware** (ADR-001): the backend job runs only when `apps/api/**` changes, the
+frontend job only when web/shared/root tooling changes.
+
+- **Backend** — `ruff` (format + lint), `mypy`, and `pytest` against a real
+  `pgvector/pgvector:pg16` Postgres plus a Redis service container. Deps installed with
+  `uv` from the committed `uv.lock` and cached between runs.
+- **Frontend** — `prettier` and `eslint` over the repo; `tsc` and the Next.js build run
+  once `apps/web` exists (PR-009). `npm` deps are cached via the committed `package-lock.json`.
+
+A single aggregate `ci` job summarizes the run so branch protection can require one status
+check regardless of which paths changed.
 
 ## Documentation
 
