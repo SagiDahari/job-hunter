@@ -6,14 +6,21 @@ requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Sagi Dahari", email = "sagidahari7@gmail.com" }]
-# Runtime dependencies are added in later PRs (FastAPI in PR-004, SQLAlchemy in PR-005, ...).
-dependencies = []
+# SQLAlchemy and the ORM models arrive in PR-005; PR-004 is the app shell only.
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic-settings>=2.4.0",
+  "psycopg[binary]>=3.2.0",
+  "redis>=5.0.0",
+]
 
 [dependency-groups]
 dev = [
   "ruff>=0.6.0",
   "mypy>=1.11.0",
   "pytest>=8.3.0",
+  "httpx>=0.27.0",
 ]
 
 [build-system]
