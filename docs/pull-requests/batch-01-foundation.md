@@ -32,8 +32,8 @@ authenticated (empty) dashboard — all running locally via `docker-compose up` 
 | ------ | -------------------------------------------------- | -------------- | ------ | ----- | -------- |
 | PR-001 | Monorepo scaffolding & tooling                     | —              | ✅     | sagi  | sagi     |
 | PR-002 | Local dev environment (Docker Compose)             | PR-001         | ✅     | sagi  | sagi     |
-| PR-003 | CI pipeline (lint, type-check, test)               | PR-001         | 🟦     | sagi  |          |
-| PR-004 | FastAPI app skeleton + settings/config             | PR-001, PR-002 | ⬜     |       |          |
+| PR-003 | CI pipeline (lint, type-check, test)               | PR-001         | ✅     | sagi  | sagi     |
+| PR-004 | FastAPI app skeleton + settings/config             | PR-001, PR-002 | 🟦     | sagi  |          |
 | PR-005 | Database: Postgres + pgvector + Alembic + base     | PR-004         | ⬜     |       |          |
 | PR-006 | User model + migration                             | PR-005         | ⬜     |       |          |
 | PR-007 | Auth: registration & login (JWT access)            | PR-006         | ⬜     |       |          |
@@ -123,15 +123,15 @@ structure per ADR-003 (`api/`, `services/`, `domain/`, `repositories/` empty she
 
 **Acceptance criteria.**
 
-- [ ] `GET /health` returns 200; `GET /ready` checks DB + Redis connectivity.
-- [ ] Settings load from env; fail fast on missing required config.
-- [ ] Structured JSON logs with request correlation IDs.
-- [ ] Layer directories exist with module boundaries documented.
+- [x] `GET /health` returns 200; `GET /ready` checks DB + Redis connectivity.
+- [x] Settings load from env; fail fast on missing required config.
+- [x] Structured JSON logs with request correlation IDs.
+- [x] Layer directories exist with module boundaries documented.
 
 **Review checklist.**
 
-- [ ] No business logic in `api/` routers.
-- [ ] `domain/` has zero framework imports.
+- [x] No business logic in `api/` routers.
+- [x] `domain/` has zero framework imports.
 
 ---
 

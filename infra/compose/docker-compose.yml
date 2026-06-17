@@ -47,17 +47,34 @@ services:
       start_period: 5s
     restart: unless-stopped
 
-  # --- enabled in later PRs -------------------------------------------------
-  # api:
-  #   build:
-  #     context: ../../apps/api
-  #     dockerfile: ../../infra/docker/api.Dockerfile
-  #   env_file: ../../.env
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
-  #     redis:    { condition: service_healthy }
-  #   ports: ["${API_PORT:-8000}:8000"]
-  #   (added in PR-004)
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: ../../infra/docker/api.Dockerfile
+    container_name: jobhunter-api
+    env_file: ../../.env
+    # Override the host-side connection URLs with in-network service names.
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - '${API_PORT:-8000}:8000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
 volumes:
   pgdata:
