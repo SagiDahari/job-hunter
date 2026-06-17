@@ -9,13 +9,15 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from jobhunter import __version__
 from jobhunter.api import api_router
 from jobhunter.core.config import Settings, get_settings
+from jobhunter.core.context import get_request_id
 from jobhunter.core.logging import configure_logging
-from jobhunter.core.middleware import request_context_middleware
+from jobhunter.core.middleware import REQUEST_ID_HEADER, request_context_middleware
 
 _DESCRIPTION = "AI-powered job matching — backend API."
 
@@ -39,6 +41,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Correlation ids + access logging wrap every request.
     app.middleware("http")(request_context_middleware)
+
+    # Global exception handler to ensure X-Request-ID is set on error responses.
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        request_id = get_request_id()
+        headers = {REQUEST_ID_HEADER: request_id} if request_id else {}
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+            headers=headers,
+        )
 
     app.include_router(api_router)
 

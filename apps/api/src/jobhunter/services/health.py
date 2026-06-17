@@ -7,6 +7,7 @@ SQLAlchemy/Redis wiring is replaced with shared engines/pools in later PRs.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass
 
@@ -46,14 +47,17 @@ async def _check_postgres(settings: Settings) -> bool:
 
 
 async def _check_redis(settings: Settings) -> bool:
-    client = redis.from_url(settings.redis_url)
+    client = None
     try:
+        client = redis.from_url(settings.redis_url)
         return bool(await asyncio.wait_for(client.ping(), timeout=_PROBE_TIMEOUT_S))
     except Exception:
         _logger.warning("redis readiness probe failed", exc_info=True)
         return False
     finally:
-        await client.aclose()
+        if client is not None:
+            with contextlib.suppress(Exception):
+                await client.aclose()
 
 
 async def check_readiness(settings: Settings) -> ReadinessReport:
